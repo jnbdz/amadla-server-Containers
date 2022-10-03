@@ -1,0 +1,52 @@
+---
+- name: 'Container Apps | Provision Amadla Image'
+  hosts: all
+  any_errors_fatal: true # stop if anything is wrong
+  gather_facts: true
+  become: true # Means become `root` if set with true
+  become_user: root
+  become_method: sudo
+  tasks:
+
+    - name: Enable user namespaces as root user
+      shell: echo 'kernel.unprivileged_userns_clone=1' > /etc/sysctl.d/00-local-userns.conf
+      args:
+        executable: /bin/bash
+
+    - name: Restart procps
+      shell: systemctl restart procps
+      args:
+        executable: /bin/bash
+
+    - name: Setup buster-backports on Debian 10 for a newer libseccomp2
+      shell: echo 'deb http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
+      args:
+        executable: /bin/bash
+
+     - name: 
+       shell: echo 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+       args:
+         executable: /bin/bash
+
+     - name: 
+       shell: curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/Release.key | sudo apt-key add -
+       args:
+         executable: /bin/bash
+
+    # == `apt update`
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install libseccomp2
+      shell: apt-get -y -t buster-backports install libseccomp2
+
+    - name: Install Podman
+      apt:
+       pkg:
+       - podman
+       state: latest
+
+
+    - name: Restart dbus for rootless podman
+      shell: systemctl --user restart dbus
